@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "database/queries/credentials.sql"
+    schema: "database/migrations"
+    gen:
+      go:
+        package: "credentials"
+        out: "src/shared/models/credentials"
+        sql_package: "pgx/v5"

@@ -1,0 +1,31 @@
+FROM golang:latest
+
+ENV GO111MODULE=on
+
+# Copy all the module and workspace files
+WORKDIR /app
+COPY ./admin/go.mod ./admin/
+COPY ./admin/go.sum ./admin/
+
+COPY ./shared/go.mod ./shared/
+COPY ./shared/go.sum ./shared/
+
+# Initialize the workspace for the project
+RUN go work init admin shared
+
+# Download all the dependencies
+WORKDIR /app/aadmin
+RUN go mod download
+
+WORKDIR /app/shared
+RUN go mod download
+
+# Copy the source code and run the code
+WORKDIR /app
+COPY ./admin ./admin
+COPY ./shared ./shared
+
+WORKDIR /app/admin
+RUN go install github.com/gravityblast/fresh@8d1fef547a99be2395e7587f8de5d01265176650
+
+CMD ["fresh"]
