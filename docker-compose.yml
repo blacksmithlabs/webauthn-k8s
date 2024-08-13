@@ -1,0 +1,22 @@
+version: '3'
+services:
+  server:
+    build: 
+      dockerfile: Dockerfile.dev
+      context: .
+    environment:
+      - REDIS_HOST=redis:6379
+      - REDIS_PASSWORD=redis_password
+    volumes:
+      - ./app:/app
+    ports:
+      - 8080:8080
+    depends_on:
+      - redis
+  redis:
+    image: redis:latest
+    command: redis-server --requirepass "redis_password"
+    # volumes:
+    #   - ./dev-data/redis:/data
+    ports:
+      - 6379:6379
