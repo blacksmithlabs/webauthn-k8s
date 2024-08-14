@@ -10,7 +10,7 @@ import (
 // RegistrationUserInfo is a struct that holds the user information for a credential.
 type RegistrationUserInfo struct {
 	UserId      string `json:"userId" binding:"required"`
-	UserName    string `json:"userName" binding:"required"`
+	UserName    string `json:"userName"`
 	DisplayName string `json:"displayName"`
 }
 
@@ -47,7 +47,7 @@ func (r RegistrationUserInfo) Validate() error {
 
 // CreateRegistrationRequest is a struct that holds the request for creating a credential.
 type CreateRegistrationRequest struct {
-	User RegistrationUserInfo `json:"user"`
+	User RegistrationUserInfo `json:"user" binding:"required"`
 }
 
 // Validate validates the CreateRegistrationRequest.
@@ -57,6 +57,29 @@ func (c CreateRegistrationRequest) Validate() error {
 
 // CreateRegistrationResponse is a struct that holds the response for creating a credential.
 type CreateRegistrationResponse struct {
-	RequestId string                      `json:"requestId"`
-	Options   protocol.CredentialCreation `json:"options"`
+	RequestId string                      `json:"requestId" binding:"required"`
+	Options   protocol.CredentialCreation `json:"options" binding:"required"`
+}
+
+// FinishRegistrationRequest is a struct that holds the request for finishing a credential.
+type FinishRegistrationRequest struct {
+	User       RegistrationUserInfo                `json:"user"`
+	Credential protocol.CredentialCreationResponse `json:"credential" binding:"required"`
+}
+
+type CredentialResponse struct {
+	ID        protocol.URLEncodedBase64 `json:"id" binding:"required"`
+	PublicKey protocol.URLEncodedBase64 `json:"publicKey" binding:"required"`
+}
+
+func CredentialResponseFromWebauthn(credential *webauthn.Credential) CredentialResponse {
+	return CredentialResponse{
+		ID:        protocol.URLEncodedBase64(credential.ID),
+		PublicKey: protocol.URLEncodedBase64(credential.PublicKey),
+	}
+}
+
+type FinishRegistrationResponse struct {
+	RequestId  string             `json:"requestId" binding:"required"`
+	Credential CredentialResponse `json:"credential" binding:"required"`
 }
