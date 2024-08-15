@@ -5,24 +5,47 @@ services:
       dockerfile: Dockerfile.dev
       context: .
     environment:
-      - REDIS_POOL_SIZE=10
-      - REDIS_HOST=redis:6379
-      - REDIS_PASSWORD=redis_password
-      - SESSION_SECRET=secret
-      - RP_ID=localhost
-      - RP_DISPLAY_NAME=Blacksmith Labs
-      - RP_ORIGINS=http://localhost:5173 # where the UI POC is running
-      - APP_PORT=8081
+      REDIS_POOL_SIZE: 10
+      REDIS_HOST: redis:6379
+      REDIS_PASSWORD: redis_password
+      SESSION_SECRET: secret
+      POSTGRES_USER: postgres://postgres:postgres_password@postgres:5432/webauthn
+      RP_ID: localhost
+      RP_DISPLAY_NAME: Blacksmith Labs
+      RP_ORIGINS: http://localhost:5173 # where the UI POC is running
+      APP_PORT: 8081
     volumes:
-      - ./app:/app
+      - ./src:/app
     ports:
       - 8081:8081
     depends_on:
       - redis
+      - postgres
   redis:
     image: redis:latest
-    command: redis-server --requirepass "redis_password"
-    # volumes:
-    #   - ./dev-data/redis:/data
+    command: redis-server --save 60 1 --requirepass "redis_password"
+    volumes:
+      - redis_data:/data
     ports:
       - 6379:6379
+  postgres:
+    image: postgres:16.4
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: webauthn
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  migrations:
+    image: migrate/migrate
+    command: -path=/migrations/ -database=postgres://postgres:postgres_password@postgres:5432/webauthn?sslmode=disable up
+    volumes:
+      - ./database/migrations:/migrations
+    depends_on:
+      - postgres
+volumes:
+  redis_data:
+  postgres_data:

@@ -1,4 +1,4 @@
 # Local dev files
 .vscode
-app/app/tmp/*
+runner-build
 test-data/

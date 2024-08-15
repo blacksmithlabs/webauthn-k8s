@@ -13,16 +13,17 @@ import (
 
 var logger = utils.GetLogger()
 
+// POST /credentials/ end point to handle getting the params for creating a credential
 func BeginCreateCredential(c *gin.Context) {
 	var requestPayload dto.CreateRegistrationRequest
 	if err := c.BindJSON(&requestPayload); err != nil {
 		logger.Error("Invalid request format", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request format"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request format"})
 		return
 	}
 	if err := requestPayload.Validate(); err != nil {
 		logger.Error("Invalid request payload", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request payload"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request payload"})
 		return
 	}
 
@@ -33,7 +34,7 @@ func BeginCreateCredential(c *gin.Context) {
 
 	if err != nil {
 		logger.Error("Failed to create registration options", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to create registration options"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to create registration options"})
 		return
 	}
 
@@ -44,7 +45,7 @@ func BeginCreateCredential(c *gin.Context) {
 	session.Set(requestId, gin.H{"user": requestPayload.User, "session": sessionData})
 	if err := session.Save(); err != nil {
 		logger.Error("Failed to save session data", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to save session data"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to save session data"})
 		return
 	}
 
@@ -54,6 +55,7 @@ func BeginCreateCredential(c *gin.Context) {
 	})
 }
 
+// PUT /credentials/:requestId end point to handle actually creating a credential
 func FinishCreateCredential(c *gin.Context) {
 	requestId := c.Param("requestId")
 	logger.Info("Finish create credential", "requestId", requestId)
@@ -62,7 +64,7 @@ func FinishCreateCredential(c *gin.Context) {
 	sessionPayload := session.Get(requestId)
 
 	if sessionPayload == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No request data found for request ID", "requestId": requestId})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No request data found for request ID", "requestId": requestId})
 		return
 	}
 
@@ -74,13 +76,13 @@ func FinishCreateCredential(c *gin.Context) {
 	var requestPayload dto.FinishRegistrationRequest
 	if err := c.BindJSON(&requestPayload); err != nil {
 		logger.Error("Invalid request format", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request format"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request format"})
 		return
 	}
 	parsedCredential, err := requestPayload.Credential.Parse()
 	if err != nil {
 		logger.Error("Failed to parse credential", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err, "message": "Failed to parse credential"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err, "message": "Failed to parse credential"})
 		return
 	}
 
@@ -89,9 +91,11 @@ func FinishCreateCredential(c *gin.Context) {
 	credential, err := webAuthn.CreateCredential(user, sessionData, parsedCredential)
 	if err != nil {
 		logger.Error("Failed to finish registration", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to finish registration"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to finish registration"})
 		return
 	}
+
+	logger.Info("Credential created", "credential", credential)
 
 	// Step 17 - Check that the credentialId is not yet registered to any other user
 	// Step 18 - Associate the credential with the user account

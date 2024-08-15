@@ -20,7 +20,8 @@ var (
 	redisPassword  = os.Getenv("REDIS_PASSWORD")
 	sessionSecret  = os.Getenv("SESSION_SECRET")
 	sessionTimeout = os.Getenv("SESSION_TIMEOUT")
-	// TODO Postgres info
+	// Postgres info
+	postgresUrl = os.Getenv("POSTGRES_URL")
 	// Application Config info
 	appPort = os.Getenv("APP_PORT")
 	// Webauthn Config info
@@ -71,6 +72,11 @@ func GetSessionTimeout() time.Duration {
 	}
 
 	return defaultSessionTimeout * time.Second
+}
+
+func GetPostgresUrl() string {
+	// postgres://username:password@localhost:5432/database_name
+	return postgresUrl
 }
 
 func GetAppPort() string {
