@@ -9,34 +9,14 @@ import (
 
 // RegistrationUserInfo is a struct that holds the user information for a credential.
 type RegistrationUserInfo struct {
-	UserId      string `json:"userId" binding:"required"`
+	UserID      string `json:"userId" binding:"required"`
 	UserName    string `json:"userName"`
 	DisplayName string `json:"displayName"`
 }
 
-func (r RegistrationUserInfo) WebAuthnID() []byte {
-	return []byte(r.UserId)
-}
-
-func (r RegistrationUserInfo) WebAuthnName() string {
-	return r.UserName
-}
-
-func (r RegistrationUserInfo) WebAuthnDisplayName() string {
-	if r.DisplayName == "" {
-		return r.UserName
-	}
-	return r.DisplayName
-}
-
-// There are no credentials for the user
-func (r RegistrationUserInfo) WebAuthnCredentials() []webauthn.Credential {
-	return []webauthn.Credential{}
-}
-
 // Validate validates the RegistrationUserInfo.
 func (r RegistrationUserInfo) Validate() error {
-	if r.UserId == "" {
+	if r.UserID == "" {
 		return fmt.Errorf("userId is required")
 	}
 	if r.UserName == "" {
@@ -45,19 +25,19 @@ func (r RegistrationUserInfo) Validate() error {
 	return nil
 }
 
-// CreateRegistrationRequest is a struct that holds the request for creating a credential.
-type CreateRegistrationRequest struct {
+// StartRegistrationRequest is a struct that holds the request for creating a credential.
+type StartRegistrationRequest struct {
 	User RegistrationUserInfo `json:"user" binding:"required"`
 }
 
-// Validate validates the CreateRegistrationRequest.
-func (c CreateRegistrationRequest) Validate() error {
+// Validate validates the StartRegistrationRequest.
+func (c StartRegistrationRequest) Validate() error {
 	return c.User.Validate()
 }
 
-// CreateRegistrationResponse is a struct that holds the response for creating a credential.
-type CreateRegistrationResponse struct {
-	RequestId string                      `json:"requestId" binding:"required"`
+// StartRegistrationResponse is a struct that holds the response for creating a credential.
+type StartRegistrationResponse struct {
+	RequestID string                      `json:"requestId" binding:"required"`
 	Options   protocol.CredentialCreation `json:"options" binding:"required"`
 }
 
@@ -80,6 +60,6 @@ func CredentialResponseFromWebauthn(credential *webauthn.Credential) CredentialR
 }
 
 type FinishRegistrationResponse struct {
-	RequestId  string             `json:"requestId" binding:"required"`
+	RequestID  string             `json:"requestId" binding:"required"`
 	Credential CredentialResponse `json:"credential" binding:"required"`
 }

@@ -7,15 +7,13 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/utils"
+	credential_service "blacksmithlabs.dev/webauthn-k8s/app/services/credential"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 )
 
-var logger = utils.GetLogger()
-
 // POST /credentials/ end point to handle getting the params for creating a credential
 func BeginCreateCredential(c *gin.Context) {
-	var requestPayload dto.CreateRegistrationRequest
+	var requestPayload dto.StartRegistrationRequest
 	if err := c.BindJSON(&requestPayload); err != nil {
 		logger.Error("Invalid request format", "error", err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid request format"})
@@ -27,11 +25,27 @@ func BeginCreateCredential(c *gin.Context) {
 		return
 	}
 
-	logger.Info("Creating credential for user", "userId", requestPayload.User.UserId)
+	// Upsert the user for this credential
+	service, err := credential_service.New(c)
+	if err != nil {
+		logger.Error("Failed to get credentials service", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Database error"})
+		return
+	}
+
+	user, err := service.UpsertUser(requestPayload.User)
+	if err != nil {
+		logger.Error("Failed to upsert user", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "User creation failed"})
+		return
+	} else {
+		logger.Info("User upserted", "user", user)
+	}
+
+	logger.Info("Creating credential for user", "userId", user.ID, "refId", user.RefID)
 
 	webAuthn := c.MustGet("webauthn").(*webauthn.WebAuthn)
-	options, sessionData, err := webAuthn.BeginRegistration(requestPayload.User)
-
+	options, sessionData, err := webAuthn.BeginRegistration(user)
 	if err != nil {
 		logger.Error("Failed to create registration options", "error", err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to create registration options"})
@@ -40,17 +54,16 @@ func BeginCreateCredential(c *gin.Context) {
 
 	requestId := uuid.New().String()
 	session := getSession(c)
-	// TODO move user data into the database
 	logger.Info("Saving request data to session", "requestId", requestId, "user", requestPayload.User, "session", sessionData)
-	session.Set(requestId, gin.H{"user": requestPayload.User, "session": sessionData})
+	session.Set(requestId, gin.H{"userId": user.ID, "session": sessionData})
 	if err := session.Save(); err != nil {
 		logger.Error("Failed to save session data", "error", err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to save session data"})
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.CreateRegistrationResponse{
-		RequestId: requestId,
+	c.JSON(http.StatusOK, dto.StartRegistrationResponse{
+		RequestID: requestId,
 		Options:   *options,
 	})
 }
@@ -64,12 +77,27 @@ func FinishCreateCredential(c *gin.Context) {
 	sessionPayload := session.Get(requestId)
 
 	if sessionPayload == nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No request data found for request ID", "requestId": requestId})
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Request Not Found", "requestId": requestId})
 		return
 	}
 
-	user := sessionPayload.(gin.H)["user"].(dto.RegistrationUserInfo)
+	userId := sessionPayload.(gin.H)["userId"].(int64)
 	sessionData := sessionPayload.(gin.H)["session"].(webauthn.SessionData)
+
+	// Get the user for this credential
+	service, err := credential_service.New(c)
+	if err != nil {
+		logger.Error("Failed to get credentials service", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Database error"})
+		return
+	}
+
+	user, err := service.GetUserByID(userId)
+	if err != nil {
+		logger.Error("Failed to get user", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "User lookup failed"})
+		return
+	}
 
 	logger.Info("Loaded user for request", "user", user)
 
@@ -99,10 +127,19 @@ func FinishCreateCredential(c *gin.Context) {
 
 	// Step 17 - Check that the credentialId is not yet registered to any other user
 	// Step 18 - Associate the credential with the user account
-	// TODO save credential to database
+	err = service.InsertCredential(user, credential)
+	if err != nil {
+		logger.Error("Failed to insert credential", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"erqror": err.Error(), "message": "Failed to insert credential"})
+		return
+	}
+
+	// Clear session since request is finished
+	session.Clear()
+	session.Save()
 
 	c.JSON(http.StatusOK, dto.FinishRegistrationResponse{
-		RequestId:  requestId,
+		RequestID:  requestId,
 		Credential: dto.CredentialResponseFromWebauthn(credential),
 	})
 }

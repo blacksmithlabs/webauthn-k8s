@@ -9,7 +9,7 @@ services:
       REDIS_HOST: redis:6379
       REDIS_PASSWORD: redis_password
       SESSION_SECRET: secret
-      POSTGRES_USER: postgres://postgres:postgres_password@postgres:5432/webauthn
+      POSTGRES_URL: postgres://postgres:postgres_password@postgres:5432/webauthn
       RP_ID: localhost
       RP_DISPLAY_NAME: Blacksmith Labs
       RP_ORIGINS: http://localhost:5173 # where the UI POC is running
