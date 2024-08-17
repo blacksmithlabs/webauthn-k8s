@@ -4,25 +4,16 @@ ENV GO111MODULE=on
 
 # Copy all the module and workspace files
 WORKDIR /app
-COPY ./src/go.work .
-COPY ./src/go.work.sum .
+COPY ./app/go.mod ./app/
+COPY ./app/go.sum ./app/
 
-WORKDIR /app/admin
-COPY ./src/admin/go.mod .
-COPY ./src/admin/go.sum .
+COPY ./shared/go.mod ./shared/
+COPY ./shared/go.sum ./shared/
 
-WORKDIR /app/app
-COPY ./src/app/go.mod .
-COPY ./src/app/go.sum .
-
-WORKDIR /app/shared
-COPY ./src/shared/go.mod .
-COPY ./src/shared/go.sum .
+# Initialize the workspace for the project
+RUN go work init app shared
 
 # Download all the dependencies
-WORKDIR /app/admin
-RUN go mod download
-
 WORKDIR /app/app
 RUN go mod download
 
@@ -31,7 +22,8 @@ RUN go mod download
 
 # Copy the source code and run the code
 WORKDIR /app
-COPY ./src .
+COPY ./app ./app
+COPY ./shared ./shared
 
 WORKDIR /app/app
 RUN go install github.com/gravityblast/fresh@8d1fef547a99be2395e7587f8de5d01265176650

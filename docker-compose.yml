@@ -2,8 +2,8 @@ version: '3'
 services:
   server:
     build:
-      dockerfile: Dockerfile.dev
-      context: .
+      dockerfile: Dockerfile.app.dev
+      context: ./src/
     environment:
       REDIS_POOL_SIZE: 10
       REDIS_HOST: redis:6379
@@ -19,8 +19,13 @@ services:
     ports:
       - 8081:8081
     depends_on:
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrations:
+        condition: service_started
+
   redis:
     image: redis:latest
     command: redis-server --save 60 1 --requirepass "redis_password"
@@ -28,6 +33,7 @@ services:
       - redis_data:/data
     ports:
       - 6379:6379
+
   postgres:
     image: postgres:16.4
     restart: always
@@ -39,13 +45,21 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+
   migrations:
     image: migrate/migrate
     command: -path=/migrations/ -database=postgres://postgres:postgres_password@postgres:5432/webauthn?sslmode=disable up
     volumes:
       - ./database/migrations:/migrations
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
 volumes:
   redis_data:
   postgres_data:
