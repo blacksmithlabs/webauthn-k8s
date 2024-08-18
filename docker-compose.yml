@@ -22,17 +22,22 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       migrations:
         condition: service_started
 
   redis:
     image: redis:latest
-    command: redis-server --save 60 1 --requirepass "redis_password"
+    command: redis-server --save 60 1 --requirepass redis_password
     volumes:
       - redis_data:/data
     ports:
       - 6379:6379
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a redis_password ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 6
 
   postgres:
     image: postgres:16.4
@@ -48,7 +53,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
-      timeout: 3s
+      timeout: 30s
       retries: 6
 
   migrations:

@@ -96,5 +96,8 @@ func GetRPID() string {
 }
 
 func GetRPOrigins() []string {
+	if rpOrigins == "" {
+		return []string{}
+	}
 	return strings.Split(rpOrigins, ",")
 }

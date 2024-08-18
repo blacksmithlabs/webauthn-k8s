@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -13,19 +12,18 @@ import (
 
 	"blacksmithlabs.dev/webauthn-k8s/app/config"
 	"blacksmithlabs.dev/webauthn-k8s/app/controllers"
-	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 )
 
 var (
 	webAuthn       *webauthn.WebAuthn
 	err            error
-	sessionTimeout time.Duration = config.GetSessionTimeout()
+	sessionTimeout = config.GetSessionTimeout()
 )
 
 func main() {
-	// Initialize code depenedencies
+	// Initialize code dependencies
 	gob.Register(gin.H{})
-	gob.Register(dto.RegistrationUserInfo{})
+	// gob.Register(dto.RegistrationUserInfo{})
 	gob.Register(webauthn.SessionData{})
 
 	// Initialize WebAuthn
@@ -57,10 +55,12 @@ func main() {
 	})
 
 	// Enable CORS
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{"http://localhost:5173"}
-	corsConfig.AllowCredentials = true
-	engine.Use(cors.New(corsConfig))
+	if origins := config.GetRPOrigins(); len(origins) > 0 {
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowOrigins = origins
+		corsConfig.AllowCredentials = true
+		engine.Use(cors.New(corsConfig))
+	}
 
 	// Initialize Redis session store
 	store, err := redis.NewStore(

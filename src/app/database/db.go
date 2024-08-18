@@ -13,6 +13,11 @@ import (
 var lock = &sync.Mutex{}
 var pool *pgxpool.Pool
 
+// Testing mocks
+type dbPoolFuncType = func(ctx context.Context, connString string) (*pgxpool.Pool, error)
+
+var dbPoolFunc dbPoolFuncType = pgxpool.New
+
 func ConnectDb(ctx context.Context) (*pgxpool.Pool, error) {
 	if pool == nil {
 		lock.Lock()
@@ -23,7 +28,7 @@ func ConnectDb(ctx context.Context) (*pgxpool.Pool, error) {
 			}
 			// Connect to the database
 			var err error
-			pool, err = pgxpool.New(ctx, config.GetPostgresUrl())
+			pool, err = dbPoolFunc(ctx, config.GetPostgresUrl())
 			if err != nil {
 				return nil, err
 			}
