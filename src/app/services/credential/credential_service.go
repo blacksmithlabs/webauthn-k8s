@@ -4,24 +4,29 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/milqa/pgxpoolmock/sqlc"
+
 	"blacksmithlabs.dev/webauthn-k8s/app/database"
 	"blacksmithlabs.dev/webauthn-k8s/app/utils"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
-	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // CredentialService provides methods for interacting with user credentials
 type CredentialService struct {
 	ctx     context.Context
-	pool    *pgxpool.Pool
+	conn    sqlc.DBTX
 	queries *credentials.Queries
+}
+
+var getDbConn func(context.Context) (sqlc.DBTX, error) = func(ctx context.Context) (sqlc.DBTX, error) {
+	return database.ConnectDb(ctx)
 }
 
 // New creates a new CredentialService instance
 func New(ctx context.Context) (*CredentialService, error) {
-	pool, err := database.ConnectDb(ctx)
+	pool, err := getDbConn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +35,7 @@ func New(ctx context.Context) (*CredentialService, error) {
 
 	return &CredentialService{
 		ctx:     ctx,
-		pool:    pool,
+		conn:    pool,
 		queries: queries,
 	}, nil
 }
