@@ -33,13 +33,15 @@ WHERE ref_id = $1;
 SELECT sqlc.embed(webauthn_users), sqlc.embed(webauthn_credentials)
 FROM webauthn_users
 LEFT JOIN webauthn_credentials ON webauthn_users._id = webauthn_credentials.user_id
-WHERE webauthn_users._id = $1;
+WHERE webauthn_users._id = $1
+ORDER BY webauthn_credentials.credential_id;
 
 -- name: GetUserWithCredentialsByRef :many
 SELECT sqlc.embed(webauthn_users), sqlc.embed(webauthn_credentials)
 FROM webauthn_users
 LEFT JOIN webauthn_credentials ON webauthn_users._id = webauthn_credentials.user_id
-WHERE webauthn_users.ref_id = $1;
+WHERE webauthn_users.ref_id = $1
+ORDER BY webauthn_credentials.credential_id;
 
 -- name: UpdateUser :one
 UPDATE webauthn_users

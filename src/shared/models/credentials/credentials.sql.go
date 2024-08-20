@@ -88,6 +88,7 @@ SELECT webauthn_users._id, webauthn_users.ref_id, webauthn_users.raw_id, webauth
 FROM webauthn_users
 LEFT JOIN webauthn_credentials ON webauthn_users._id = webauthn_credentials.user_id
 WHERE webauthn_users._id = $1
+ORDER BY webauthn_credentials.credential_id
 `
 
 type GetUserWithCredentialsByIDRow struct {
@@ -135,6 +136,7 @@ SELECT webauthn_users._id, webauthn_users.ref_id, webauthn_users.raw_id, webauth
 FROM webauthn_users
 LEFT JOIN webauthn_credentials ON webauthn_users._id = webauthn_credentials.user_id
 WHERE webauthn_users.ref_id = $1
+ORDER BY webauthn_credentials.credential_id
 `
 
 type GetUserWithCredentialsByRefRow struct {

@@ -34,6 +34,8 @@ func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*Cr
 		return nil, fmt.Errorf("failed to unmarshal Attestation: %w", err)
 	}
 
+	authenticator.SignCount = uint32(credential.UseCounter)
+
 	model := webauthn.Credential{
 		ID:              credential.CredentialID,
 		PublicKey:       credential.PublicKey,
