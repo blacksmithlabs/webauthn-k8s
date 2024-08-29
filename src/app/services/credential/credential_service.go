@@ -51,6 +51,7 @@ func parseUserCredentialList(userCredentials []credentials.ResultUserCredentialR
 		if err != nil {
 			return nil, err
 		}
+		print("\nAuth Sign count: %d\n", credential.Authenticator.SignCount)
 		user.addCredential(credential.Credential)
 	}
 
