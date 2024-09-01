@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM --platform=$BUILDPLATFORM golang:alpine AS setup
 
 ENV GO111MODULE=on
 
@@ -25,7 +25,28 @@ WORKDIR /app
 COPY ./app ./app
 COPY ./shared ./shared
 
+
+# Install and run the code using the dev server
+FROM setup AS dev
+
 WORKDIR /app/app
 RUN go install github.com/gravityblast/fresh@8d1fef547a99be2395e7587f8de5d01265176650
 
 CMD ["fresh"]
+
+
+# Compile the code
+FROM setup AS build
+
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /app/app
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build
+
+
+# Run the compiled code
+FROM alpine:latest AS run
+
+COPY --from=build /app/app/app /app
+ENTRYPOINT ["/app"]

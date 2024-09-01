@@ -1,0 +1,10 @@
+---
+deployment
+node
+---
+postgres
+---
+redis
+---
+ingress
+---
