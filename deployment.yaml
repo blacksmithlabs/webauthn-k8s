@@ -1,10 +1,120 @@
 ---
-deployment
-node
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webauthn
+  namespace: webauthn
+  labels:
+    app: webauthn
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webauthn
+  template:
+    metadata:
+      labels:
+        app: webauthn
+    spec:
+      initContainers:
+      - name: webauthn-migrations
+        image: 192.168.13.3:32000/webauthn-server-migrations:alpha
+        imagePullPolicy: Always
+        env:
+        - name: DB_URI
+          valueFrom:
+            secretKeyRef:
+              name: webauthn-postgres-superuser
+              key: uri
+      containers:
+      - name: webauthn-server
+        image: 192.168.13.3:32000/webauthn-server:alpha
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: APP_PORT
+          value: "8080"
+        # - name: REDIS_POOL_SIZE
+        #   value: "10"
+        - name: REDIS_HOST
+          value: "webauthn-redis-master.webauthn.svc.cluster.local:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: webauthn-redis
+              key: redis-password
+        - name: SESSION_SECRET
+          value: "bsm-webauthn-secret"
+        # - name: SESSION_TIMEOUT
+        #   value: "redis:6379"
+        - name: POSTGRES_URL
+          valueFrom:
+            secretKeyRef:
+              name: webauthn-postgres-app
+              key: uri
+        - name: RP_ID
+          value: "blacksmithlabs.dev"
+        - name: RP_DISPLAY_NAME
+          value: "Blacksmith Labs"
+        - name: RP_ORIGINS
+          value: "https://blacksmithlabs.dev,https://bsm.auth.it.com"
 ---
-postgres
+apiVersion: v1
+kind: Service
+metadata:
+  name: webauthn-service
+  namespace: webauthn
+  labels:
+    app: webauthn
+spec:
+  type: ClusterIP
+  selector:
+    app: webauthn
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
 ---
-redis
----
-ingress
----
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webauthn-ingress
+  namespace: webauthn
+  annotations:
+    kubernetes.io/ingress.class: public
+  labels:
+    app: webauthn
+spec:
+  rules:
+  - host: bsm.auth.it.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webauthn-service
+            port:
+              number: 8080
+# ---
+# apiVersion: migrations.coderanger.net/v1beta1
+# kind: Migrator
+# metadata:
+#   name: webauthn-migrations
+#   namespace: webauthn
+# spec:
+#   selector:
+#     matchLabels:
+#       app: webauthn
+#   # nodeSelector:
+#   #   kubernetes.io/arch: amd64
+#   image: 192.168.13.3:32000/webauthn-server-migrations:alpha
+#   command:
+#   - /app/migrate
+#   # env:
+#   # - name: DB_URI
+#   #   valueFrom:
+#   #     secretKeyRef:
+#   #       name: webauthn-postgres-superuser
+#   #       key: uri

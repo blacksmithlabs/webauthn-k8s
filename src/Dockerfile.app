@@ -48,5 +48,7 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build
 # Run the compiled code
 FROM alpine:latest AS run
 
+# TODO Set to release mode
+#ENV GIN_MODE=release
 COPY --from=build /app/app/app /app
 ENTRYPOINT ["/app"]

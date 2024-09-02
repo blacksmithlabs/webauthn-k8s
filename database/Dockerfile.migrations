@@ -1,0 +1,6 @@
+FROM migrate/migrate
+
+COPY ./migrations /migrations
+
+ENTRYPOINT [""]
+CMD migrate -path=/migrations/ -database=$(echo $DB_URI | sed 's/*/webauthn/g') up

@@ -77,6 +77,7 @@ func main() {
 	engine.Use(sessions.Sessions("webauthn", store))
 
 	// Set up routes
+	engine.GET("/_health", controllers.HealthCheck)
 	engine.GET("/users/:userId/credentials/", controllers.GetUserCredentials)
 	engine.POST("/credentials/", controllers.BeginCreateCredential)
 	engine.PUT("/credentials/:requestId", controllers.FinishCreateCredential)
