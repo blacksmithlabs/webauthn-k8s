@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"blacksmithlabs.dev/webauthn-k8s/app/database"
@@ -44,12 +45,16 @@ func New(ctx context.Context) (*CredentialService, error) {
 func (s *CredentialService) UpsertUser(userDto dto.RegistrationUserInfo) (*UserModel, error) {
 	// TODO generate a random byte array for the raw ID
 
-	user, err := s.queries.UpsertUser(s.ctx, credentials.UpsertUserParams{
-		RefID:       userDto.UserID,
-		RawID:       []byte(userDto.UserID),
-		Name:        userDto.UserName,
-		DisplayName: userDto.DisplayName,
-	})
+	user, err := s.queries.GetUserByRef(s.ctx, userDto.UserID)
+	if err == pgx.ErrNoRows {
+		// User does not exist, create a new user
+		user, err = s.queries.InsertUser(s.ctx, credentials.InsertUserParams{
+			RefID:       userDto.UserID,
+			RawID:       []byte(userDto.UserID),
+			Name:        userDto.UserName,
+			DisplayName: userDto.DisplayName,
+		})
+	}
 	if err != nil {
 		return nil, err
 	}

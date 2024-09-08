@@ -10,6 +10,7 @@ import (
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgx/v5"
 	"github.com/milqa/pgxpoolmock"
 )
 
@@ -44,20 +45,72 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestCredentialService_UpsertUser(t *testing.T) {
+func TestCredentialService_UpsertUser_UserNotFound(t *testing.T) {
+	// Given
+	setupTest(t)
+
+	mocker := mockPool.EXPECT()
+	mocker.QueryRow(
+		gomock.Any(),
+		pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_users.*)"),
+		"123",
+	).Return(
+		pgxpoolmock.NewRow(int64(0), "", []byte{}, "", "").WithError(pgx.ErrNoRows),
+	)
+	mocker.QueryRow(
+		gomock.Any(),
+		pgxpoolmock.QueryContains("(?ms:INSERT INTO webauthn_users.*)"),
+		"123",
+		[]byte("123"),
+		"User Name",
+		"Display Name",
+	).Return(
+		pgxpoolmock.NewRow(int64(1), "123", []byte("123"), "User Name", "Display Name"),
+	)
+
+	expected := UserModel{
+		ID:          1,
+		RefID:       "123",
+		RawID:       []byte("123"),
+		Name:        "User Name",
+		DisplayName: "Display Name",
+	}
+
+	// When
+	credentialService, err := New(context.Background())
+	if err != nil {
+		t.Errorf("New() error = %v, want nil", err)
+	}
+
+	user, err := credentialService.UpsertUser(dto.RegistrationUserInfo{
+		UserID:      "123",
+		UserName:    "User Name",
+		DisplayName: "Display Name",
+	})
+
+	// Then
+	if err != nil {
+		t.Errorf("UpsertUsers() error = %v, want nil", err)
+	}
+	if user == nil {
+		t.Errorf("UpsertUsers() user = nil, want not nil")
+	} else if !reflect.DeepEqual(*user, expected) {
+		t.Errorf("UpsertUsers() user = %v, want %v", *user, expected)
+	}
+}
+
+func TestCredentialService_UpsertUser_UserFound(t *testing.T) {
 	// Given
 	setupTest(t)
 
 	mockPool.EXPECT().QueryRow(
 		gomock.Any(),
-		pgxpoolmock.QueryContains("(?ms:INSERT INTO webauthn_users.*)"),
-		gomock.Any(),
-		gomock.Any(),
-		gomock.Any(),
-		gomock.Any(),
+		pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_users.*)"),
+		"123",
 	).Return(
 		pgxpoolmock.NewRow(int64(1), "123", []byte("123"), "User Name", "Display Name"),
 	)
+	// Insert query should not be called
 
 	expected := UserModel{
 		ID:          1,
