@@ -2,10 +2,11 @@ package credential_service
 
 import (
 	"context"
-	"encoding/base64"
 	"reflect"
+	"strings"
 	"testing"
 
+	"blacksmithlabs.dev/webauthn-k8s/app/database"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -16,17 +17,13 @@ import (
 
 var mockPool *pgxpoolmock.MockPgxIface
 
-func b64(s string) string {
-	return base64.StdEncoding.EncodeToString([]byte(s))
-}
-
 func setupTest(t *testing.T) {
 	oldGetDbConn := getDbConn
 
 	ctrl := gomock.NewController(t)
 
 	mockPool = pgxpoolmock.NewMockPgxIface(ctrl)
-	getDbConn = func(ctx context.Context) (credentials.DBTX, error) {
+	getDbConn = func(ctx context.Context) (database.DBConn, error) {
 		return mockPool, nil
 	}
 
@@ -50,6 +47,9 @@ func TestCredentialService_UpsertUser_UserNotFound(t *testing.T) {
 	setupTest(t)
 
 	mocker := mockPool.EXPECT()
+	mocker.Begin(gomock.Any()).Return(mockPool, nil)
+	mocker.Commit(gomock.Any()).Return(nil)
+	mocker.Rollback(gomock.Any()).Return(nil)
 	mocker.QueryRow(
 		gomock.Any(),
 		pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_users.*)"),
@@ -103,7 +103,11 @@ func TestCredentialService_UpsertUser_UserFound(t *testing.T) {
 	// Given
 	setupTest(t)
 
-	mockPool.EXPECT().QueryRow(
+	mocker := mockPool.EXPECT()
+	mocker.Begin(gomock.Any()).Return(mockPool, nil)
+	mocker.Commit(gomock.Any()).Return(nil)
+	mocker.Rollback(gomock.Any()).Return(nil)
+	mocker.QueryRow(
 		gomock.Any(),
 		pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_users.*)"),
 		"123",
@@ -140,6 +144,53 @@ func TestCredentialService_UpsertUser_UserFound(t *testing.T) {
 		t.Errorf("UpsertUsers() user = nil, want not nil")
 	} else if !reflect.DeepEqual(*user, expected) {
 		t.Errorf("UpsertUsers() user = %v, want %v", *user, expected)
+	}
+}
+
+func TestCredentialService_UpsertUser_Error(t *testing.T) {
+	// Given
+	setupTest(t)
+
+	mocker := mockPool.EXPECT()
+	mocker.Begin(gomock.Any()).Return(mockPool, nil)
+	// Commit should not be called
+	mocker.Rollback(gomock.Any()).Return(nil)
+	mocker.QueryRow(
+		gomock.Any(),
+		pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_users.*)"),
+		"123",
+	).Return(
+		pgxpoolmock.NewRow(int64(0), "", []byte{}, "", "").WithError(pgx.ErrNoRows),
+	)
+	mocker.QueryRow(
+		gomock.Any(),
+		pgxpoolmock.QueryContains("(?ms:INSERT INTO webauthn_users.*)"),
+		"123",
+		[]byte("123"),
+		"User Name",
+		"Display Name",
+	).Return(
+		pgxpoolmock.NewRow(int64(0), "", []byte{}, "", "").WithError(pgx.ErrNoRows),
+	)
+
+	// When
+	credentialService, err := New(context.Background())
+	if err != nil {
+		t.Errorf("New() error = %v, want nil", err)
+	}
+
+	user, err := credentialService.UpsertUser(dto.RegistrationUserInfo{
+		UserID:      "123",
+		UserName:    "User Name",
+		DisplayName: "Display Name",
+	})
+
+	// Then
+	if err == nil {
+		t.Errorf("UpsertUsers() error = nil, want not nil. User: %v", user)
+	}
+	if !strings.Contains(err.Error(), "query failed") {
+		t.Errorf("UpsertUsers() error = %v, want %v", err, "query failed")
 	}
 }
 
@@ -226,7 +277,7 @@ func TestCredentialService_GetUserByRef(t *testing.T) {
 func TestCredentialService_GetUserWithCredentialsByID(t *testing.T) {
 	type fields struct {
 		ctx     context.Context
-		conn    credentials.DBTX
+		conn    database.DBConn
 		queries *credentials.Queries
 	}
 	type args struct {
@@ -263,7 +314,7 @@ func TestCredentialService_GetUserWithCredentialsByID(t *testing.T) {
 func TestCredentialService_GetUserWithCredentialsByRef(t *testing.T) {
 	type fields struct {
 		ctx     context.Context
-		conn    credentials.DBTX
+		conn    database.DBConn
 		queries *credentials.Queries
 	}
 	type args struct {
@@ -300,7 +351,7 @@ func TestCredentialService_GetUserWithCredentialsByRef(t *testing.T) {
 func TestCredentialService_InsertCredential(t *testing.T) {
 	type fields struct {
 		ctx     context.Context
-		conn    credentials.DBTX
+		conn    database.DBConn
 		queries *credentials.Queries
 	}
 	type args struct {
@@ -332,7 +383,7 @@ func TestCredentialService_InsertCredential(t *testing.T) {
 func TestCredentialService_IncrementCredentialUseCounter(t *testing.T) {
 	type fields struct {
 		ctx     context.Context
-		conn    credentials.DBTX
+		conn    database.DBConn
 		queries *credentials.Queries
 	}
 	type args struct {

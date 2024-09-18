@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"blacksmithlabs.dev/webauthn-k8s/app/config"
@@ -12,6 +14,13 @@ import (
 
 var lock = &sync.Mutex{}
 var pool *pgxpool.Pool
+
+type DBConn interface {
+	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...interface{}) pgx.Row
+	Begin(context.Context) (pgx.Tx, error)
+}
 
 // Testing mocks
 type dbPoolFuncType = func(ctx context.Context, connString string) (*pgxpool.Pool, error)

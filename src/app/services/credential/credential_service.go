@@ -17,11 +17,11 @@ import (
 // CredentialService provides methods for interacting with user credentials
 type CredentialService struct {
 	ctx     context.Context
-	conn    credentials.DBTX
+	conn    database.DBConn
 	queries *credentials.Queries
 }
 
-var getDbConn func(context.Context) (credentials.DBTX, error) = func(ctx context.Context) (credentials.DBTX, error) {
+var getDbConn func(context.Context) (database.DBConn, error) = func(ctx context.Context) (database.DBConn, error) {
 	return database.ConnectDb(ctx)
 }
 
@@ -45,10 +45,18 @@ func New(ctx context.Context) (*CredentialService, error) {
 func (s *CredentialService) UpsertUser(userDto dto.RegistrationUserInfo) (*UserModel, error) {
 	// TODO generate a random byte array for the raw ID
 
-	user, err := s.queries.GetUserByRef(s.ctx, userDto.UserID)
+	tx, err := s.conn.Begin(s.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction: %v", err)
+	}
+	txn := s.queries.WithTx(tx)
+
+	defer tx.Rollback(s.ctx)
+
+	user, err := txn.GetUserByRef(s.ctx, userDto.UserID)
 	if err == pgx.ErrNoRows {
 		// User does not exist, create a new user
-		user, err = s.queries.InsertUser(s.ctx, credentials.InsertUserParams{
+		user, err = txn.InsertUser(s.ctx, credentials.InsertUserParams{
 			RefID:       userDto.UserID,
 			RawID:       []byte(userDto.UserID),
 			Name:        userDto.UserName,
@@ -56,7 +64,12 @@ func (s *CredentialService) UpsertUser(userDto dto.RegistrationUserInfo) (*UserM
 		})
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query failed: %v", err)
+	}
+
+	err = tx.Commit(s.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %v", err)
 	}
 
 	return UserModelFromDatabase(user), nil
