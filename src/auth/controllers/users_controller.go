@@ -6,8 +6,15 @@ import (
 	credential_service "blacksmithlabs.dev/webauthn-k8s/auth/services/credential"
 	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/go-webauthn/webauthn/webauthn"
 )
+
+type ResponseCredentials struct {
+	// The Credential ID of the public key credential source
+	ID []byte `json:"id"`
+
+	// The credential public key of the public key credential source
+	PublicKey []byte `json:"publicKey"`
+}
 
 // GET /users/:userId/credentials end point to handle getting the credentials for a user
 func GetUserCredentials(c *gin.Context) {
@@ -27,7 +34,10 @@ func GetUserCredentials(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"credentials": utils.Map(user.Credentials.Value, func(c credential_service.CredentialModel) webauthn.Credential {
-		return c.Credential
+	c.JSON(http.StatusOK, gin.H{"credentials": utils.Map(user.Credentials.Value, func(c credential_service.CredentialModel) ResponseCredentials {
+		return ResponseCredentials{
+			ID:        c.ID,
+			PublicKey: c.PublicKey,
+		}
 	})})
 }
