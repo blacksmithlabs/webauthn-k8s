@@ -11,9 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CredentialMeta struct {
+	Active   bool   `json:"active"`
+	Nickname string `json:"nickname"`
+}
+
 type CredentialModel struct {
 	webauthn.Credential
 	User utils.Relationship[UserModel]
+	Meta CredentialMeta
 }
 
 func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*CredentialModel, error) {
@@ -34,6 +40,15 @@ func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*Cr
 		return nil, fmt.Errorf("failed to unmarshal Attestation: %w", err)
 	}
 
+	var meta CredentialMeta
+	if len(credential.Meta) == 0 {
+		meta = CredentialMeta{
+			Active: true,
+		}
+	} else if err := json.Unmarshal(credential.Meta, &meta); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Meta: %w", err)
+	}
+
 	authenticator.SignCount = uint32(credential.UseCounter)
 
 	model := webauthn.Credential{
@@ -51,6 +66,7 @@ func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*Cr
 		User: utils.Relationship[UserModel]{Loaded: false, Value: UserModel{
 			ID: credential.UserID.Int64,
 		}},
+		Meta: meta,
 	}, nil
 }
 
@@ -80,6 +96,10 @@ func (c *CredentialModel) ToInsertParams() (*credentials.InsertCredentialParams,
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Attestation: %w", err)
 	}
+	metaJson, err := json.Marshal(c.Meta)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Meta: %w", err)
+	}
 
 	return &credentials.InsertCredentialParams{
 		CredentialID:    c.ID,
@@ -90,5 +110,6 @@ func (c *CredentialModel) ToInsertParams() (*credentials.InsertCredentialParams,
 		Flags:           flagsJson,
 		Authenticator:   authenticatorJson,
 		Attestation:     attestationJson,
+		Meta:            metaJson,
 	}, nil
 }

@@ -37,9 +37,9 @@ RETURNING *;
 
 -- name: InsertCredential :one
 INSERT INTO webauthn_credentials (
-    "credential_id", "user_id", "public_key", "attestation_type", "transport", "flags", "authenticator", "attestation"
+    "credential_id", "user_id", "public_key", "attestation_type", "transport", "flags", "authenticator", "attestation", "meta"
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 ) RETURNING *;
 
 -- name: ListCredentialsByUser :many

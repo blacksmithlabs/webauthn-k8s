@@ -18,6 +18,7 @@ type WebauthnCredential struct {
 	Flags           []byte
 	Authenticator   []byte
 	Attestation     []byte
+	Meta            []byte
 }
 
 type WebauthnUser struct {

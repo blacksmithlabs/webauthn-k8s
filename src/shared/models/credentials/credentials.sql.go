@@ -12,7 +12,7 @@ import (
 )
 
 const getCredential = `-- name: GetCredential :one
-SELECT webauthn_credentials.credential_id, webauthn_credentials.user_id, webauthn_credentials.use_counter, webauthn_credentials.public_key, webauthn_credentials.attestation_type, webauthn_credentials.transport, webauthn_credentials.flags, webauthn_credentials.authenticator, webauthn_credentials.attestation, webauthn_users._id, webauthn_users.ref_id, webauthn_users.raw_id, webauthn_users.name, webauthn_users.display_name
+SELECT webauthn_credentials.credential_id, webauthn_credentials.user_id, webauthn_credentials.use_counter, webauthn_credentials.public_key, webauthn_credentials.attestation_type, webauthn_credentials.transport, webauthn_credentials.flags, webauthn_credentials.authenticator, webauthn_credentials.attestation, webauthn_credentials.meta, webauthn_users._id, webauthn_users.ref_id, webauthn_users.raw_id, webauthn_users.name, webauthn_users.display_name
 FROM webauthn_credentials
 INNER JOIN webauthn_users ON webauthn_credentials.user_id = webauthn_users._id
 WHERE credential_id = $1
@@ -36,6 +36,7 @@ func (q *Queries) GetCredential(ctx context.Context, credentialID []byte) (GetCr
 		&i.WebauthnCredential.Flags,
 		&i.WebauthnCredential.Authenticator,
 		&i.WebauthnCredential.Attestation,
+		&i.WebauthnCredential.Meta,
 		&i.WebauthnUser.ID,
 		&i.WebauthnUser.RefID,
 		&i.WebauthnUser.RawID,
@@ -99,10 +100,10 @@ func (q *Queries) IncrementCredentialUseCounter(ctx context.Context, credentialI
 
 const insertCredential = `-- name: InsertCredential :one
 INSERT INTO webauthn_credentials (
-    "credential_id", "user_id", "public_key", "attestation_type", "transport", "flags", "authenticator", "attestation"
+    "credential_id", "user_id", "public_key", "attestation_type", "transport", "flags", "authenticator", "attestation", "meta"
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
-) RETURNING credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+) RETURNING credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation, meta
 `
 
 type InsertCredentialParams struct {
@@ -114,6 +115,7 @@ type InsertCredentialParams struct {
 	Flags           []byte
 	Authenticator   []byte
 	Attestation     []byte
+	Meta            []byte
 }
 
 func (q *Queries) InsertCredential(ctx context.Context, arg InsertCredentialParams) (WebauthnCredential, error) {
@@ -126,6 +128,7 @@ func (q *Queries) InsertCredential(ctx context.Context, arg InsertCredentialPara
 		arg.Flags,
 		arg.Authenticator,
 		arg.Attestation,
+		arg.Meta,
 	)
 	var i WebauthnCredential
 	err := row.Scan(
@@ -138,6 +141,7 @@ func (q *Queries) InsertCredential(ctx context.Context, arg InsertCredentialPara
 		&i.Flags,
 		&i.Authenticator,
 		&i.Attestation,
+		&i.Meta,
 	)
 	return i, err
 }
@@ -176,7 +180,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (Webauth
 }
 
 const listCredentialsByUser = `-- name: ListCredentialsByUser :many
-SELECT credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation
+SELECT credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation, meta
 FROM webauthn_credentials
 WHERE user_id = $1
 ORDER BY credential_id
@@ -201,6 +205,7 @@ func (q *Queries) ListCredentialsByUser(ctx context.Context, userID pgtype.Int8)
 			&i.Flags,
 			&i.Authenticator,
 			&i.Attestation,
+			&i.Meta,
 		); err != nil {
 			return nil, err
 		}

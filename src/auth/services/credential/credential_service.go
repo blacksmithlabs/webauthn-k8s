@@ -153,6 +153,7 @@ func (s *CredentialService) InsertCredential(user *UserModel, credential *webaut
 	model := &CredentialModel{
 		Credential: *credential,
 		User:       utils.Relationship[UserModel]{Loaded: true, Value: *user},
+		Meta:       CredentialMeta{Active: true},
 	}
 	params, err := model.ToInsertParams()
 	if err != nil {
