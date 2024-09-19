@@ -1,7 +1,7 @@
 #!/bin/bash
 
-app_tag="192.168.13.3:32000/webauthn-server:alpha"
-migration_tag="192.168.13.3:32000/webauthn-server-migrations:alpha"
+app_tag="registry.blacksmithlabs.dev/webauthn-server:alpha"
+migration_tag="registry.blacksmithlabs.dev/webauthn-server-migrations:alpha"
 
 pushd src
 

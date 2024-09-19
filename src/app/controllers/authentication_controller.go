@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	credential_service "blacksmithlabs.dev/webauthn-k8s/app/services/credential"
+	"blacksmithlabs.dev/webauthn-k8s/app/services/request_cache"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -51,12 +52,12 @@ func BeginAuthentication(c *gin.Context) {
 	}
 
 	requestId := uuid.New().String()
-	session := getSession(c)
-	logger.Info("Saving request data to session", "requestId", requestId, "user", requestPayload.User, "session", sessionData)
-	session.Set(requestId, gin.H{"userId": user.ID, "session": sessionData})
-	if err := session.Save(); err != nil {
-		logger.Error("Failed to save session data", "error", err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to save session data"})
+
+	cache := request_cache.New(c)
+	requestInfo := request_cache.RequestInfo{UserId: user.ID, SessionData: sessionData}
+	if err := cache.SetRequestCache(requestId, &requestInfo); err != nil {
+		logger.Error("Failed to save request data to cache", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to save request data to cache"})
 		return
 	}
 
@@ -71,16 +72,19 @@ func FinishAuthentication(c *gin.Context) {
 	requestId := c.Param("requestId")
 	logger.Info("Finish authentication", "requestId", requestId)
 
-	session := getSession(c)
-	sessionPayload := session.Get(requestId)
-
-	if sessionPayload == nil {
+	cache := request_cache.New(c)
+	requestInfo, err := cache.GetRequestCache(requestId)
+	if err == cache.Nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Request Not Found", "requestId": requestId})
+		return
+	} else if err != nil {
+		logger.Error("Failed to get request data from cache", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to get request data from cache"})
 		return
 	}
 
-	userId := sessionPayload.(gin.H)["userId"].(int64)
-	sessionData := sessionPayload.(gin.H)["session"].(webauthn.SessionData)
+	userId := requestInfo.UserId
+	sessionData := requestInfo.SessionData
 
 	// Get the user for this credential
 	service, err := credential_service.New(c)
@@ -116,7 +120,7 @@ func FinishAuthentication(c *gin.Context) {
 		return
 	}
 
-	credential, err := webAuthn.ValidateLogin(user, sessionData, parsedAssertion)
+	credential, err := webAuthn.ValidateLogin(user, *sessionData, parsedAssertion)
 	if err != nil {
 		logger.Error("Failed to validate login", "error", err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err, "message": "Failed to validate login"})
@@ -129,6 +133,9 @@ func FinishAuthentication(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to increment credential use counter"})
 		return
 	}
+
+	// Clear request cache since request is finished
+	cache.DeleteRequestCache(requestId)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully authenticated", "credential": credential, "useCount": count})
 }

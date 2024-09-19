@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	credential_service "blacksmithlabs.dev/webauthn-k8s/app/services/credential"
+	"blacksmithlabs.dev/webauthn-k8s/app/services/request_cache"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 )
 
@@ -53,12 +54,12 @@ func BeginCreateCredential(c *gin.Context) {
 	}
 
 	requestId := uuid.New().String()
-	session := getSession(c)
-	logger.Info("Saving request data to session", "requestId", requestId, "user", requestPayload.User, "session", sessionData)
-	session.Set(requestId, gin.H{"userId": user.ID, "session": sessionData})
-	if err := session.Save(); err != nil {
-		logger.Error("Failed to save session data", "error", err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to save session data"})
+
+	cache := request_cache.New(c)
+	requestInfo := request_cache.RequestInfo{UserId: user.ID, SessionData: sessionData}
+	if err := cache.SetRequestCache(requestId, &requestInfo); err != nil {
+		logger.Error("Failed to save request data to cache", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to save request data to cache"})
 		return
 	}
 
@@ -73,16 +74,19 @@ func FinishCreateCredential(c *gin.Context) {
 	requestId := c.Param("requestId")
 	logger.Info("Finish create credential", "requestId", requestId)
 
-	session := getSession(c)
-	sessionPayload := session.Get(requestId)
-
-	if sessionPayload == nil {
+	cache := request_cache.New(c)
+	requestInfo, err := cache.GetRequestCache(requestId)
+	if err == cache.Nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "Request Not Found", "requestId": requestId})
+		return
+	} else if err != nil {
+		logger.Error("Failed to get request data from cache", "error", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err, "message": "Failed to get request data from cache"})
 		return
 	}
 
-	userId := sessionPayload.(gin.H)["userId"].(int64)
-	sessionData := sessionPayload.(gin.H)["session"].(webauthn.SessionData)
+	userId := requestInfo.UserId
+	sessionData := requestInfo.SessionData
 
 	// Get the user for this credential
 	service, err := credential_service.New(c)
@@ -116,7 +120,7 @@ func FinishCreateCredential(c *gin.Context) {
 
 	// Step 1 - 16
 	webAuthn := c.MustGet("webauthn").(*webauthn.WebAuthn)
-	credential, err := webAuthn.CreateCredential(user, sessionData, parsedCredential)
+	credential, err := webAuthn.CreateCredential(user, *sessionData, parsedCredential)
 	if err != nil {
 		logger.Error("Failed to finish registration", "error", err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Failed to finish registration"})
@@ -134,9 +138,8 @@ func FinishCreateCredential(c *gin.Context) {
 		return
 	}
 
-	// Clear session since request is finished
-	session.Clear()
-	session.Save()
+	// Clear request cache since request is finished
+	cache.DeleteRequestCache(requestId)
 
 	c.JSON(http.StatusOK, dto.FinishRegistrationResponse{
 		RequestID:  requestId,

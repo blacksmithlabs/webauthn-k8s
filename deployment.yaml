@@ -18,7 +18,7 @@ spec:
     spec:
       initContainers:
       - name: webauthn-migrations
-        image: 192.168.13.3:32000/webauthn-server-migrations:alpha
+        image: registry.blacksmithlabs.dev/webauthn-server-migrations:alpha
         imagePullPolicy: Always
         env:
         - name: DB_URI
@@ -28,7 +28,7 @@ spec:
               key: uri
       containers:
       - name: webauthn-server
-        image: 192.168.13.3:32000/webauthn-server:alpha
+        image: registry.blacksmithlabs.dev/webauthn-server:alpha
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -110,7 +110,7 @@ spec:
 #       app: webauthn
 #   # nodeSelector:
 #   #   kubernetes.io/arch: amd64
-#   image: 192.168.13.3:32000/webauthn-server-migrations:alpha
+#   image: registry.blacksmithlabs.dev/webauthn-server-migrations:alpha
 #   command:
 #   - /app/migrate
 #   # env:
