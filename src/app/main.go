@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
 
@@ -61,20 +59,6 @@ func main() {
 		corsConfig.AllowCredentials = true
 		engine.Use(cors.New(corsConfig))
 	}
-
-	// Initialize Redis session store
-	store, err := redis.NewStore(
-		config.GetRedisPoolSize(),
-		"tcp",
-		config.GetRedisHost(),
-		config.GetRedisPassword(),
-		config.GetSessionSecret(),
-	)
-	if err != nil {
-		fmt.Println("Failed to initialize redis session", err)
-		return
-	}
-	engine.Use(sessions.Sessions("webauthn", store))
 
 	// Set up routes
 	engine.GET("/_health", controllers.HealthCheck)
