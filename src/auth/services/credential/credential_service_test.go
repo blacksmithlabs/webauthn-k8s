@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/database"
+	"blacksmithlabs.dev/webauthn-k8s/auth/database"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 	"github.com/go-webauthn/webauthn/webauthn"

@@ -14,7 +14,7 @@ COPY ./shared/go.sum ./shared/
 RUN go work init admin shared
 
 # Download all the dependencies
-WORKDIR /app/aadmin
+WORKDIR /app/admin
 RUN go mod download
 
 WORKDIR /app/shared

@@ -5,7 +5,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/config"
+	"blacksmithlabs.dev/webauthn-k8s/auth/config"
 )
 
 var lock = &sync.Mutex{}

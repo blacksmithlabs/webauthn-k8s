@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/database"
-	"blacksmithlabs.dev/webauthn-k8s/app/utils"
+	"blacksmithlabs.dev/webauthn-k8s/auth/database"
+	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 )

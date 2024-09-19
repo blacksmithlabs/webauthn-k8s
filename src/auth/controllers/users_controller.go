@@ -3,8 +3,8 @@ package controllers
 import (
 	"net/http"
 
-	credential_service "blacksmithlabs.dev/webauthn-k8s/app/services/credential"
-	"blacksmithlabs.dev/webauthn-k8s/app/utils"
+	credential_service "blacksmithlabs.dev/webauthn-k8s/auth/services/credential"
+	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
 )

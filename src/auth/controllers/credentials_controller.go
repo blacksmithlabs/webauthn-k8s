@@ -7,8 +7,8 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
-	credential_service "blacksmithlabs.dev/webauthn-k8s/app/services/credential"
-	"blacksmithlabs.dev/webauthn-k8s/app/services/request_cache"
+	credential_service "blacksmithlabs.dev/webauthn-k8s/auth/services/credential"
+	"blacksmithlabs.dev/webauthn-k8s/auth/services/request_cache"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 )
 

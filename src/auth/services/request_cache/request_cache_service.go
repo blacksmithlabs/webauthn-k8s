@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/cache"
-	"blacksmithlabs.dev/webauthn-k8s/app/config"
+	"blacksmithlabs.dev/webauthn-k8s/auth/cache"
+	"blacksmithlabs.dev/webauthn-k8s/auth/config"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 

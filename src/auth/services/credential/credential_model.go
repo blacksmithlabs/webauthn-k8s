@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/utils"
+	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"

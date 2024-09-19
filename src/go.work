@@ -2,6 +2,6 @@ go 1.22.6
 
 use (
 	./admin
-	./app
+	./auth
 	./shared
 )

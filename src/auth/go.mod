@@ -1,4 +1,4 @@
-module blacksmithlabs.dev/webauthn-k8s/app
+module blacksmithlabs.dev/webauthn-k8s/auth
 
 go 1.22.6
 

@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/config"
-	"blacksmithlabs.dev/webauthn-k8s/app/controllers"
+	"blacksmithlabs.dev/webauthn-k8s/auth/config"
+	"blacksmithlabs.dev/webauthn-k8s/auth/controllers"
 )
 
 var (
@@ -41,8 +41,7 @@ func main() {
 	}
 
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
-		fmt.Println("Failed to create Webauthn handler", err)
-		return
+		panic(fmt.Errorf("failed to create WebAuthn handler: %w", err))
 	}
 
 	// Initialize Gin

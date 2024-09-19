@@ -6,8 +6,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
-	"blacksmithlabs.dev/webauthn-k8s/app/config"
-	"blacksmithlabs.dev/webauthn-k8s/app/utils"
+	"blacksmithlabs.dev/k8s-webauthn/admin/config"
+	"blacksmithlabs.dev/k8s-webauthn/admin/utils"
 )
 
 var sessionTimeout = config.GetSessionTimeout()
