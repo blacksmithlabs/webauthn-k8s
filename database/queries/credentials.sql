@@ -42,10 +42,17 @@ INSERT INTO webauthn_credentials (
     $1, $2, $3, $4, $5, $6, $7, $8, $9
 ) RETURNING *;
 
--- name: ListCredentialsByUser :many
+-- name: ListAllCredentialsByUser :many
 SELECT *
 FROM webauthn_credentials
 WHERE user_id = $1
+ORDER BY credential_id;
+
+-- name: ListActiveCredentialsByUser :many
+SELECT *
+FROM webauthn_credentials
+WHERE user_id = $1
+AND meta->>'status' = true
 ORDER BY credential_id;
 
 -- name: GetCredential :one

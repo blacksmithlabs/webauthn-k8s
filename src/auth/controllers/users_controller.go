@@ -27,7 +27,7 @@ func GetUserCredentials(c *gin.Context) {
 		return
 	}
 
-	user, err := service.GetUserWithCredentialsByRef(userId)
+	user, err := service.GetUserWithCredentialsByRef(userId, true)
 	if err != nil {
 		logger.Error("Failed to get user", "error", err)
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error(), "message": "User not found"})

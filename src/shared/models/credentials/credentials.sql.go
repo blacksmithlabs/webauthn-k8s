@@ -179,15 +179,54 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (Webauth
 	return i, err
 }
 
-const listCredentialsByUser = `-- name: ListCredentialsByUser :many
+const listActiveCredentialsByUser = `-- name: ListActiveCredentialsByUser :many
+SELECT credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation, meta
+FROM webauthn_credentials
+WHERE user_id = $1
+AND meta->>'status' = true
+ORDER BY credential_id
+`
+
+func (q *Queries) ListActiveCredentialsByUser(ctx context.Context, userID pgtype.Int8) ([]WebauthnCredential, error) {
+	rows, err := q.db.Query(ctx, listActiveCredentialsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WebauthnCredential
+	for rows.Next() {
+		var i WebauthnCredential
+		if err := rows.Scan(
+			&i.CredentialID,
+			&i.UserID,
+			&i.UseCounter,
+			&i.PublicKey,
+			&i.AttestationType,
+			&i.Transport,
+			&i.Flags,
+			&i.Authenticator,
+			&i.Attestation,
+			&i.Meta,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllCredentialsByUser = `-- name: ListAllCredentialsByUser :many
 SELECT credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation, meta
 FROM webauthn_credentials
 WHERE user_id = $1
 ORDER BY credential_id
 `
 
-func (q *Queries) ListCredentialsByUser(ctx context.Context, userID pgtype.Int8) ([]WebauthnCredential, error) {
-	rows, err := q.db.Query(ctx, listCredentialsByUser, userID)
+func (q *Queries) ListAllCredentialsByUser(ctx context.Context, userID pgtype.Int8) ([]WebauthnCredential, error) {
+	rows, err := q.db.Query(ctx, listAllCredentialsByUser, userID)
 	if err != nil {
 		return nil, err
 	}

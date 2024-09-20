@@ -31,7 +31,7 @@ func BeginAuthentication(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "Database error"})
 		return
 	}
-	user, err := service.GetUserWithCredentialsByRef(requestPayload.User.UserID)
+	user, err := service.GetUserWithCredentialsByRef(requestPayload.User.UserID, false)
 	if err != nil {
 		logger.Error("Failed to get user", "error", err)
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error(), "message": "User not found"})
@@ -94,7 +94,7 @@ func FinishAuthentication(c *gin.Context) {
 		return
 	}
 
-	user, err := service.GetUserWithCredentialsByID(userId)
+	user, err := service.GetUserWithCredentialsByID(userId, false)
 	if err != nil {
 		logger.Error("Failed to get user", "error", err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "message": "User lookup failed"})

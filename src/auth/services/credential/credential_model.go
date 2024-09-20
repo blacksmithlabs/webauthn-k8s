@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type UserRelationship = utils.Relationship[UserModel]
+
 type CredentialMeta struct {
 	Active   bool   `json:"active"`
 	Nickname string `json:"nickname"`
@@ -18,7 +20,7 @@ type CredentialMeta struct {
 
 type CredentialModel struct {
 	webauthn.Credential
-	User utils.Relationship[UserModel]
+	User UserRelationship
 	Meta CredentialMeta
 }
 
@@ -63,7 +65,7 @@ func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*Cr
 
 	return &CredentialModel{
 		Credential: model,
-		User: utils.Relationship[UserModel]{Loaded: false, Value: UserModel{
+		User: UserRelationship{Loaded: false, Value: UserModel{
 			ID: credential.UserID.Int64,
 		}},
 		Meta: meta,

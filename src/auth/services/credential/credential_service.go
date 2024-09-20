@@ -6,10 +6,8 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"blacksmithlabs.dev/webauthn-k8s/auth/database"
-	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"blacksmithlabs.dev/webauthn-k8s/shared/dto"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 )
@@ -95,36 +93,46 @@ func (s *CredentialService) GetUserByRef(ref string) (*UserModel, error) {
 	return UserModelFromDatabase(user), nil
 }
 
-func (s *CredentialService) addUserCredentialList(user *UserModel) error {
-	userCredentials, err := s.queries.ListCredentialsByUser(s.ctx, pgtype.Int8{
-		Int64: user.ID,
-		Valid: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get credentials: %w", err)
-	}
-
+func addCredentialListToUser(user *UserModel, userCredentials []credentials.WebauthnCredential) {
 	for _, row := range userCredentials {
 		credential, err := CredentialModelFromDatabase(row)
 		if err != nil {
-			return fmt.Errorf("failed to parse credential: %w", err)
+			return
 		}
 
-		user.addCredential(credential.Credential)
+		user.linkCredential(*credential)
 	}
+}
+
+func (s *CredentialService) addUserCredentialList(user *UserModel, allCredentials bool) error {
+	var (
+		userCredentials []credentials.WebauthnCredential
+		err             error
+	)
+
+	if allCredentials {
+		userCredentials, err = s.queries.ListAllCredentialsByUser(s.ctx, user.PgID())
+	} else {
+		userCredentials, err = s.queries.ListActiveCredentialsByUser(s.ctx, user.PgID())
+	}
+	if err != nil && err != pgx.ErrNoRows {
+		return fmt.Errorf("failed to get credentials: %w", err)
+	}
+
+	addCredentialListToUser(user, userCredentials)
 
 	return nil
 }
 
 // GetUserWithCredentialsByID retrieves a user from the database based on the provided ID and includes the user's credentials
-func (s *CredentialService) GetUserWithCredentialsByID(id int64) (*UserModel, error) {
+func (s *CredentialService) GetUserWithCredentialsByID(id int64, allCredentials bool) (*UserModel, error) {
 	user, err := s.queries.GetUserByID(s.ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	userModel := UserModelFromDatabase(user)
-	err = s.addUserCredentialList(userModel)
+	err = s.addUserCredentialList(userModel, allCredentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
@@ -133,14 +141,14 @@ func (s *CredentialService) GetUserWithCredentialsByID(id int64) (*UserModel, er
 }
 
 // GetUserWithCredentialsByRef retrieves a user from the database based on the provided reference and includes the user's credentials
-func (s *CredentialService) GetUserWithCredentialsByRef(ref string) (*UserModel, error) {
+func (s *CredentialService) GetUserWithCredentialsByRef(ref string, allCredentials bool) (*UserModel, error) {
 	user, err := s.queries.GetUserByRef(s.ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
 
 	userModel := UserModelFromDatabase(user)
-	err = s.addUserCredentialList(userModel)
+	err = s.addUserCredentialList(userModel, allCredentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
@@ -152,7 +160,7 @@ func (s *CredentialService) GetUserWithCredentialsByRef(ref string) (*UserModel,
 func (s *CredentialService) InsertCredential(user *UserModel, credential *webauthn.Credential) error {
 	model := &CredentialModel{
 		Credential: *credential,
-		User:       utils.Relationship[UserModel]{Loaded: true, Value: *user},
+		User:       UserRelationship{Loaded: true, Value: *user},
 		Meta:       CredentialMeta{Active: true},
 	}
 	params, err := model.ToInsertParams()

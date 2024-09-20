@@ -4,7 +4,10 @@ import (
 	"blacksmithlabs.dev/webauthn-k8s/auth/utils"
 	"blacksmithlabs.dev/webauthn-k8s/shared/models/credentials"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type CredentialRelationship = utils.Relationship[[]CredentialModel]
 
 type UserModel struct {
 	ID          int64
@@ -12,7 +15,11 @@ type UserModel struct {
 	RawID       []byte
 	Name        string
 	DisplayName string
-	Credentials utils.Relationship[[]CredentialModel]
+	Credentials CredentialRelationship
+}
+
+func (u *UserModel) PgID() pgtype.Int8 {
+	return pgtype.Int8{Int64: u.ID, Valid: true}
 }
 
 func (u *UserModel) WebAuthnID() []byte {
@@ -40,12 +47,13 @@ func (u *UserModel) WebAuthnCredentials() []webauthn.Credential {
 	})
 }
 
-func (u *UserModel) addCredential(credential webauthn.Credential) {
-	u.Credentials.Loaded = true
-	u.Credentials.Value = append(u.Credentials.Value, CredentialModel{
-		Credential: credential,
-		User:       utils.Relationship[UserModel]{Loaded: true, Value: *u},
-	})
+func (u *UserModel) linkCredential(credential CredentialModel) {
+	if credential.User.Value.ID == 0 || credential.User.Value.ID == u.ID {
+		u.Credentials.Loaded = true
+
+		credential.User = UserRelationship{Loaded: true, Value: *u}
+		u.Credentials.Value = append(u.Credentials.Value, credential)
+	}
 }
 
 func UserModelFromDatabase(user credentials.WebauthnUser) *UserModel {
