@@ -1,15 +1,50 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
+
+	"blacksmithlabs.dev/webauthn-k8s/auth/cache"
+	"blacksmithlabs.dev/webauthn-k8s/auth/database"
 )
 
 func HealthCheck(c *gin.Context) {
-	// TODO check status of postgres and redis connections
+	var (
+		pgstatus    string = "OK"
+		cachestatus string = "OK"
+	)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "OK",
+	pgconn, err := database.ConnectDb(c)
+	if err != nil {
+		pgstatus = fmt.Errorf("ERROR connecting to postgres: %v", err).Error()
+	} else {
+		err := pgconn.Ping(c)
+		if err != nil {
+			filterre := regexp.MustCompile(`(user|database)=\w+`)
+			errmsg := fmt.Errorf("ERROR connecting to postgres: %v", err).Error()
+			pgstatus = filterre.ReplaceAllString(errmsg, "$1=*****")
+		}
+	}
+
+	cacheconn := cache.ConnectCache()
+	resp, err := cacheconn.Ping(c).Result()
+	if err != nil {
+		cachestatus = fmt.Errorf("ERROR connecting to cache: %v", err).Error()
+	} else if resp != "PONG" {
+		cachestatus = fmt.Errorf("ERROR connecting to cache: unexpected response: %v", resp).Error()
+	}
+
+	statusCode := http.StatusOK
+	if pgstatus != "OK" || cachestatus != "OK" {
+		statusCode = http.StatusInternalServerError
+	}
+
+	c.JSON(statusCode, gin.H{
+		"status":   "OK",
+		"postgres": pgstatus,
+		"cache":    cachestatus,
 	})
 }
