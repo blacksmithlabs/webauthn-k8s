@@ -29,6 +29,10 @@ func mockCredentialRow(
 	active bool,
 	nickname string,
 ) ([]byte, pgtype.Int8, int32, []byte, pgtype.Text, []byte, []byte, []byte, []byte, []byte) {
+	status := CredentialStatusActive
+	if !active {
+		status = CredentialStatusDisabled
+	}
 	return []byte(credentialId), // credential_id
 		pgtype.Int8{Int64: 1, Valid: true}, // user_id
 		int32(0), // use_counter
@@ -38,7 +42,7 @@ func mockCredentialRow(
 		[]byte("{}"), // flags
 		[]byte("{}"), // authenticator
 		[]byte("{}"), // attestation
-		[]byte(fmt.Sprintf(`{"active": %v, "nickname": "%v"}`, active, nickname)) // meta
+		[]byte(fmt.Sprintf(`{"status": "%v", "nickname": "%v"}`, status, nickname)) // meta
 }
 
 func buildUserModel(
@@ -75,6 +79,10 @@ func buildCredentialModel(
 	active bool,
 	nickname string,
 ) CredentialModel {
+	status := CredentialStatusActive
+	if !active {
+		status = CredentialStatusDisabled
+	}
 	return CredentialModel{
 		Credential: webauthn.Credential{
 			ID:              []byte(credentialId),
@@ -87,7 +95,7 @@ func buildCredentialModel(
 		},
 		User: UserRelationship{Loaded: false, Value: UserModel{ID: 1}},
 		Meta: CredentialMeta{
-			Active:   active,
+			Status:   status,
 			Nickname: nickname,
 		},
 	}
@@ -145,7 +153,7 @@ func TestCredentialService_UpsertUser_UserNotFound(t *testing.T) {
 		gomock.Any(),
 		pgxpoolmock.QueryContains("(?ms:INSERT INTO webauthn_users.*)"),
 		"123",
-		[]byte("123"),
+		gomock.Any(), // Random raw ID
 		"User Name",
 		"Display Name",
 	).Return(
@@ -230,7 +238,7 @@ func TestCredentialService_UpsertUser_Error(t *testing.T) {
 		gomock.Any(),
 		pgxpoolmock.QueryContains("(?ms:INSERT INTO webauthn_users.*)"),
 		"123",
-		[]byte("123"),
+		gomock.Any(), // Random raw ID
 		"User Name",
 		"Display Name",
 	).Return(
@@ -404,8 +412,8 @@ func TestCredentialService_GetUserWithCredentialsByID(t *testing.T) {
 				mocker.QueryRow(gomock.Any(), pgxpoolmock.QueryContains(getUserByIdSql), int64(1)).Return(
 					pgxpoolmock.NewRow(int64(1), "test-id", []byte("test-id"), "name", "display"),
 				)
-				// Ensure that the json meta->>'status' = true condition is present
-				mocker.Query(gomock.Any(), pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_credentials.*meta->>'status' = true.*)"), pgtype.Int8{Int64: 1, Valid: true}).Return(
+				// Ensure that the json meta->>'status' = 'active' condition is present
+				mocker.Query(gomock.Any(), pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_credentials.*meta->>'status' = 'active'.*)"), pgtype.Int8{Int64: 1, Valid: true}).Return(
 					pgxpoolmock.NewRows(credentialRows).AddRow(
 						mockCredentialRow("c1", true, "c1-nickname"),
 					).AddRow(
@@ -537,8 +545,8 @@ func TestCredentialService_GetUserWithCredentialsByRef(t *testing.T) {
 				mocker.QueryRow(gomock.Any(), pgxpoolmock.QueryContains(getUserByRefSql), "test-id").Return(
 					pgxpoolmock.NewRow(int64(1), "test-id", []byte("test-id"), "name", "display"),
 				)
-				// Ensure that the json meta->>'status' = true condition is present
-				mocker.Query(gomock.Any(), pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_credentials.*meta->>'status' = true.*)"), pgtype.Int8{Int64: 1, Valid: true}).Return(
+				// Ensure that the json meta->>'status' = 'active' condition is present
+				mocker.Query(gomock.Any(), pgxpoolmock.QueryContains("(?ms:SELECT.*FROM webauthn_credentials.*meta->>'status' = 'active'.*)"), pgtype.Int8{Int64: 1, Valid: true}).Return(
 					pgxpoolmock.NewRows(credentialRows).AddRow(
 						mockCredentialRow("c1", true, "c1-nickname"),
 					).AddRow(
