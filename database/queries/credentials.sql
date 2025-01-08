@@ -52,7 +52,7 @@ ORDER BY credential_id;
 SELECT *
 FROM webauthn_credentials
 WHERE user_id = $1
-AND meta->>'status' = true
+AND meta->>'status' = 'active'
 ORDER BY credential_id;
 
 -- name: GetCredential :one

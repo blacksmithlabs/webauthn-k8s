@@ -2,6 +2,7 @@ package credential_service
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -41,8 +42,6 @@ func New(ctx context.Context) (*CredentialService, error) {
 
 // UpsertUser creates or updates a user in the database based on the provided user information from the DTO
 func (s *CredentialService) UpsertUser(userDto dto.RegistrationUserInfo) (*UserModel, error) {
-	// TODO generate a random byte array for the raw ID
-
 	tx, err := s.conn.Begin(s.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start transaction: %v", err)
@@ -53,10 +52,16 @@ func (s *CredentialService) UpsertUser(userDto dto.RegistrationUserInfo) (*UserM
 
 	user, err := txn.GetUserByRef(s.ctx, userDto.UserID)
 	if err == pgx.ErrNoRows {
+		rawId := make([]byte, 32)
+
+		if _, err := rand.Read(rawId); err != nil {
+			return nil, fmt.Errorf("failed to generate raw ID: %v", err)
+		}
+
 		// User does not exist, create a new user
 		user, err = txn.InsertUser(s.ctx, credentials.InsertUserParams{
 			RefID:       userDto.UserID,
-			RawID:       []byte(userDto.UserID),
+			RawID:       rawId,
 			Name:        userDto.UserName,
 			DisplayName: userDto.DisplayName,
 		})
@@ -116,7 +121,7 @@ func (s *CredentialService) addUserCredentialList(user *UserModel, allCredential
 		userCredentials, err = s.queries.ListActiveCredentialsByUser(s.ctx, user.PgID())
 	}
 	if err != nil && err != pgx.ErrNoRows {
-		return fmt.Errorf("failed to get credentials: %w", err)
+		return fmt.Errorf("fetch user(%v) credentials (all: $%v) failed: %w", user.ID, allCredentials, err)
 	}
 
 	addCredentialListToUser(user, userCredentials)
@@ -161,7 +166,7 @@ func (s *CredentialService) InsertCredential(user *UserModel, credential *webaut
 	model := &CredentialModel{
 		Credential: *credential,
 		User:       UserRelationship{Loaded: true, Value: *user},
-		Meta:       CredentialMeta{Active: true},
+		Meta:       CredentialMeta{Status: CredentialStatusActive},
 	}
 	params, err := model.ToInsertParams()
 	if err != nil {

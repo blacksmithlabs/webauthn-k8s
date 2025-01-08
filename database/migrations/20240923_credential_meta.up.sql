@@ -4,7 +4,7 @@ ALTER TABLE webauthn_credentials
     ADD COLUMN "meta" JSON;
 
 UPDATE webauthn_credentials
-SET meta = '{"active":true}'
+SET meta = '{"status":"active"}'
 WHERE meta IS NULL;
 
 COMMIT;

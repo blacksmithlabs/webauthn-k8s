@@ -183,7 +183,7 @@ const listActiveCredentialsByUser = `-- name: ListActiveCredentialsByUser :many
 SELECT credential_id, user_id, use_counter, public_key, attestation_type, transport, flags, authenticator, attestation, meta
 FROM webauthn_credentials
 WHERE user_id = $1
-AND meta->>'status' = true
+AND meta->>'status' = 'active'
 ORDER BY credential_id
 `
 

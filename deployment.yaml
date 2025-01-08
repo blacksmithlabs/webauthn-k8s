@@ -35,8 +35,6 @@ spec:
         env:
         - name: APP_PORT
           value: "8080"
-        # - name: REDIS_POOL_SIZE
-        #   value: "10"
         - name: REDIS_HOST
           value: "webauthn-redis-master.webauthn.svc.cluster.local:6379"
         - name: REDIS_PASSWORD
@@ -46,8 +44,6 @@ spec:
               key: redis-password
         - name: SESSION_SECRET
           value: "bsm-webauthn-secret"
-        # - name: SESSION_TIMEOUT
-        #   value: "redis:6379"
         - name: POSTGRES_URL
           valueFrom:
             secretKeyRef:
@@ -55,12 +51,13 @@ spec:
               key: uri
         - name: RP_ID
           # value: "localhost"
-          value: "blacksmithlabs.github.io"
+          # value: "blacksmithlabs.github.io"
+          value: webauthn.blacksmithlabs.dev
         - name: RP_DISPLAY_NAME
           value: "Blacksmith Labs"
         - name: RP_ORIGINS
           # value: "http://localhost:5173"
-          value: "https://blacksmithlabs.dev,https://blacksmithlabs.github.io"
+          value: "https://blacksmithlabs.dev,https://webauthn.blacksmithlabs.dev,https://blacksmithlabs.github.io"
 ---
 apiVersion: v1
 kind: Service

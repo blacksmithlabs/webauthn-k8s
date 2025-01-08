@@ -13,9 +13,18 @@ import (
 
 type UserRelationship = utils.Relationship[UserModel]
 
+type CredentialStatus string
+
+const (
+	CredentialStatusActive   CredentialStatus = "active"
+	CredentialStatusRevoked  CredentialStatus = "revoked"
+	CredentialStatusDisabled CredentialStatus = "disabled"
+	CredentialStatusPending  CredentialStatus = "pending"
+)
+
 type CredentialMeta struct {
-	Active   bool   `json:"active"`
-	Nickname string `json:"nickname"`
+	Status   CredentialStatus `json:"status"`
+	Nickname string           `json:"nickname"`
 }
 
 type CredentialModel struct {
@@ -45,7 +54,7 @@ func CredentialModelFromDatabase(credential credentials.WebauthnCredential) (*Cr
 	var meta CredentialMeta
 	if len(credential.Meta) == 0 {
 		meta = CredentialMeta{
-			Active: true,
+			Status: CredentialStatusActive,
 		}
 	} else if err := json.Unmarshal(credential.Meta, &meta); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Meta: %w", err)

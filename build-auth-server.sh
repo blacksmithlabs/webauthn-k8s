@@ -6,7 +6,7 @@ migration_tag="registry.blacksmithlabs.dev/webauthn-server-migrations:alpha"
 pushd src
 
 echo "Building the auth image..."
-docker buildx build --platform linux/amd64,linux/arm64 --target=run -f Dockerfile.auth -t "$app_tag" --push .
+docker buildx build --platform linux/amd64,linux/arm64 --target run -f Dockerfile.auth -t "$app_tag" --push .
 
 if [ $? -ne 0 ]; then
     echo "Build auth failed. Exiting..."

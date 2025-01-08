@@ -37,13 +37,15 @@ func HealthCheck(c *gin.Context) {
 		cachestatus = fmt.Errorf("ERROR connecting to cache: unexpected response: %v", resp).Error()
 	}
 
+	status := "OK"
 	statusCode := http.StatusOK
 	if pgstatus != "OK" || cachestatus != "OK" {
+		status = "DEGRADED"
 		statusCode = http.StatusInternalServerError
 	}
 
 	c.JSON(statusCode, gin.H{
-		"status":   "OK",
+		"status":   status,
 		"postgres": pgstatus,
 		"cache":    cachestatus,
 	})
